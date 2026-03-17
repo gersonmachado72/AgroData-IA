@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+dist/
+build/
+
+# Ambiente virtual
+venv/
+.env
+.venv/
+env/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Streamlit
+.streamlit/
+*.toml
+!requirements.txt
+secrets.toml
+
+# Dados e imagens
+grafico.png
+*.db
+*.sqlite
+*.sqlite3
+
+# Arquivos temporários
+*.log
+*.bak
+*.swp
+*.swo
+*~
+.DS_Store
