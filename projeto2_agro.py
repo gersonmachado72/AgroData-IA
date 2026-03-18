@@ -5,7 +5,7 @@
 
 import streamlit as st
 import pandas as pd
-from google import genai
+import google.generativeai as genai
 import os
 import re
 import sys
@@ -15,13 +15,23 @@ import time
 from datetime import datetime, timedelta
 import random
 
-# 1. Configuração do Cliente Gemini
+# 1. Configuração da API Gemini (SDK antigo)
+import google.generativeai as genai
+
 API_KEY = os.environ.get("GEMINI_API_KEY")
 if not API_KEY:
     st.error("Configure a variável GEMINI_API_KEY no terminal.")
     st.stop()
 
-client = genai.Client(api_key=API_KEY)
+# Configurar a API com a chave
+genai.configure(api_key=API_KEY)
+
+# Escolher o modelo
+model = genai.GenerativeModel("gemini-1.5-flash")
+
+# Depois, na chamada da IA (dentro do botão Analisar):
+response = model.generate_content(prompt)
+codigo_gerado = response.text
 
 st.set_page_config(page_title="AgroFinanceiro IA", page_icon="💰", layout="wide")
 st.title("🌾 AgroData IA - Gestão e Finanças")
