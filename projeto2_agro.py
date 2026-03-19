@@ -220,4 +220,8 @@ with col_acoes:
     
     if "Ver Estatísticas" in opcoes:
         st.subheader("📊 Estatísticas Rápidas")
+<<<<<<< HEAD
         st.write(st.session_state.dados.describe())
+=======
+        st.write(st.session_state.dados.describe())
+>>>>>>> 9b4b66bd28dca52c43aba534a8b95a78338714c8
