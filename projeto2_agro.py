@@ -1,11 +1,10 @@
 # ==========================================
 # PROJETO 2: Assistente de Análise Agrícola
-# Versão Final - Apenas Dashboard (SEM IA)
+# Versão Final - SEM matplotlib (usando apenas Streamlit)
 # ==========================================
 
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
 import os
 import time
 from datetime import datetime
@@ -120,6 +119,18 @@ with col_metric2:
 with col_metric3:
     total_gastos = st.session_state.dados['Gasto_Insumo'].sum()
     st.metric("📉 Total Gastos", f"R$ {total_gastos:,.2f}")
+
+# Gráfico simples usando barras do Streamlit (opcional)
+if len(st.session_state.dados) > 0 and 'Cultura' in st.session_state.dados.columns:
+    st.markdown("---")
+    st.subheader("📊 Produção por Cultura")
+    
+    # Agrupar por cultura
+    producao_por_cultura = st.session_state.dados.groupby('Cultura')['Producao_Sacas'].sum().reset_index()
+    
+    # Usar bar_chart do Streamlit (não precisa de matplotlib)
+    if not producao_por_cultura.empty:
+        st.bar_chart(producao_por_cultura.set_index('Cultura'))
 
 # Área de Exportação
 st.markdown("---")
