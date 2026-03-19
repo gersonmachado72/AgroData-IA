@@ -181,9 +181,9 @@ with col_metric3:
     total_gastos = st.session_state.dados['Gasto_Insumo'].sum()
     st.metric("📉 Total Gastos", f"R$ {total_gastos:,.2f}")
 
-# 5. Área de Ações e IA
+# 5. Área de Ações
 st.markdown("---")
-col_acoes, col_ia = st.columns([1, 2])
+col_acoes = st.columns([1])[0]  # Apenas uma coluna para ações
 
 with col_acoes:
     st.subheader("📤 Exportar Dados")
@@ -221,125 +221,3 @@ with col_acoes:
     if "Ver Estatísticas" in opcoes:
         st.subheader("📊 Estatísticas Rápidas")
         st.write(st.session_state.dados.describe())
-
-# 6. Assistente de IA com Modelos Válidos
-with col_ia:
-    st.subheader("🤖 Analista Financeiro IA")
-    st.caption("Faça perguntas sobre seus dados em linguagem natural")
-    
-    MODELOS_VALIDOS = [
-        "gemini-1.5-flash",
-        "gemini-1.5-pro",
-        "gemini-1.0-pro"
-    ]
-    
-    can_request, status_message = st.session_state.rate_limiter.can_make_request()
-    
-    if not can_request:
-        wait_time = st.session_state.rate_limiter.get_wait_time()
-        st.warning(f"⏳ Limite de requisições atingido. Aguarde {wait_time:.0f} segundos.")
-        st.progress(min(100, (60 - wait_time) / 60 * 100) if wait_time < 60 else 0)
-    
-    pergunta = st.text_input(
-        "Sua pergunta:",
-        placeholder="Ex: Qual cultura deu mais lucro? Crie um gráfico de gastos vs recebidos",
-        disabled=not can_request
-    )
-
-    if st.button("🔍 Analisar", use_container_width=True, disabled=not can_request):
-        if not pergunta:
-            st.warning("Por favor, digite uma pergunta.")
-        else:
-            st.session_state.rate_limiter.register_request()
-            
-            sucesso = False
-            erro_final = None
-            
-            for modelo in MODELOS_VALIDOS:
-                if sucesso:
-                    break
-                    
-                st.info(f"🔄 Tentando com modelo: {modelo}")
-                
-                try:
-                    if os.path.exists("grafico.png"):
-                        os.remove("grafico.png")
-                        time.sleep(0.5)
-                    
-                    df_atual = st.session_state.dados
-                    
-                    stats = {
-                        'total_recebido': float(df_atual['Total_Recebido'].sum()),
-                        'total_producao': float(df_atual['Producao_Sacas'].sum()),
-                        'total_gastos': float(df_atual['Gasto_Insumo'].sum()),
-                        'culturas': df_atual['Cultura'].dropna().unique().tolist() if 'Cultura' in df_atual.columns else []
-                    }
-                    
-                    colunas = ", ".join(df_atual.columns)
-                    
-                    prompt = f"""
-                    DataFrame pandas 'df' com colunas: {colunas}
-                    Estatísticas: {stats}
-                    
-                    Pergunta: "{pergunta}"
-                    
-                    Regras:
-                    1. Use apenas pandas e matplotlib
-                    2. Para gráficos: plt.savefig("grafico.png") e plt.close()
-                    3. Use print() para resultados numéricos
-                    4. Retorne APENAS código Python executável
-                    """
-                    
-                    # CORREÇÃO: Usar o modelo do SDK antigo
-                    model = genai.GenerativeModel(modelo)
-                    response = model.generate_content(prompt)
-                    
-                    codigo = response.text
-                    codigo = re.sub(r"^```python\n|```\n?$", "", codigo, flags=re.MULTILINE).strip()
-                    
-                    with st.expander("🔧 Ver código gerado"):
-                        st.code(codigo, language="python")
-                    
-                    output_capturado = io.StringIO()
-                    sys.stdout = output_capturado
-                    
-                    ambiente_local = {
-                        'df': df_atual,
-                        'pd': pd,
-                        'plt': plt
-                    }
-                    
-                    exec(codigo, ambiente_local)
-                    
-                    sys.stdout = sys.__stdout__
-                    
-                    resultado_texto = output_capturado.getvalue()
-                    if resultado_texto.strip():
-                        st.markdown("**📝 Resultado:**")
-                        st.write(resultado_texto)
-                    
-                    if os.path.exists("grafico.png") and os.path.getsize("grafico.png") > 0:
-                        st.markdown("**📊 Gráfico gerado:**")
-                        st.image("grafico.png")
-                        time.sleep(1)
-                        os.remove("grafico.png")
-                    
-                    sucesso = True
-                    st.success(f"✅ Análise concluída com modelo {modelo}!")
-                    
-                except Exception as e:
-                    erro_final = str(e)
-                    st.warning(f"❌ Modelo {modelo} falhou: {str(e)[:100]}...")
-                    time.sleep(2)
-            
-            if not sucesso:
-                st.error(f"❌ Todos os modelos falharam. Último erro: {erro_final}")
-                
-                with st.expander("💡 Possíveis soluções"):
-                    st.markdown("""
-                    1. **Aguarde alguns minutos** e tente novamente
-                    2. **Verifique sua chave API** no Google Cloud Console
-                    3. **Ative a API Generative Language** no console
-                    4. **Considere upgrade** para um plano pago
-                    
-                    Modelos tentados: """ + ", ".join(MODELOS_VALIDOS))
