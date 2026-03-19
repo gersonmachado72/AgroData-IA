@@ -1,6 +1,6 @@
 # ==========================================
 # PROJETO 2: Assistente de Análise Agrícola
-# Versão Corrigida - Modelos Válidos
+# Versão Corrigida - SDK Antigo (google.generativeai)
 # ==========================================
 
 import streamlit as st
@@ -16,8 +16,6 @@ from datetime import datetime, timedelta
 import random
 
 # 1. Configuração da API Gemini (SDK antigo)
-import google.generativeai as genai
-
 API_KEY = os.environ.get("GEMINI_API_KEY")
 if not API_KEY:
     st.error("Configure a variável GEMINI_API_KEY no terminal.")
@@ -25,13 +23,6 @@ if not API_KEY:
 
 # Configurar a API com a chave
 genai.configure(api_key=API_KEY)
-
-# Escolher o modelo
-model = genai.GenerativeModel("gemini-1.5-flash")
-
-# Depois, na chamada da IA (dentro do botão Analisar):
-response = model.generate_content(prompt)
-codigo_gerado = response.text
 
 st.set_page_config(page_title="AgroFinanceiro IA", page_icon="💰", layout="wide")
 st.title("🌾 AgroData IA - Gestão e Finanças")
@@ -114,7 +105,7 @@ st.subheader("📊 Painel de Dados Financeiros")
 edited_df = st.data_editor(
     st.session_state.dados,
     num_rows="dynamic",
-    width='stretch',  # Corrigido: use_container_width substituído por width
+    width='stretch',
     column_config={
         "Total_Recebido": st.column_config.NumberColumn(
             "Total Recebido (R$)", 
@@ -144,7 +135,6 @@ col1, col2, col3 = st.columns(3)
 
 with col1:
     if st.button("💾 Salvar Alterações", type="primary"):
-        # Recalcular total recebido sem warnings
         edited_df = edited_df.copy()
         edited_df['Total_Recebido'] = 0.0
         mask = (edited_df['Producao_Sacas'].notna() & 
@@ -164,7 +154,6 @@ with col1:
 
 with col2:
     if st.button("➕ Adicionar Linha"):
-        # Método mais seguro para adicionar linha sem warnings
         nova_linha = pd.DataFrame([{col: None for col in st.session_state.dados.columns}])
         st.session_state.dados = pd.concat([st.session_state.dados, nova_linha], 
                                            ignore_index=True, 
@@ -199,7 +188,6 @@ col_acoes, col_ia = st.columns([1, 2])
 with col_acoes:
     st.subheader("📤 Exportar Dados")
     
-    # Mostrar status da cota
     if st.checkbox("📊 Ver status da cota da API"):
         can_request, message = st.session_state.rate_limiter.can_make_request()
         if can_request:
@@ -239,14 +227,12 @@ with col_ia:
     st.subheader("🤖 Analista Financeiro IA")
     st.caption("Faça perguntas sobre seus dados em linguagem natural")
     
-    # Lista de modelos válidos para testar
     MODELOS_VALIDOS = [
-        "gemini-1.5-flash",      # Mais rápido e estável
-        "gemini-1.5-pro",         # Mais poderoso
-        "gemini-1.0-pro"          # Versão estável antiga
+        "gemini-1.5-flash",
+        "gemini-1.5-pro",
+        "gemini-1.0-pro"
     ]
     
-    # Verificar disponibilidade da API
     can_request, status_message = st.session_state.rate_limiter.can_make_request()
     
     if not can_request:
@@ -264,10 +250,8 @@ with col_ia:
         if not pergunta:
             st.warning("Por favor, digite uma pergunta.")
         else:
-            # Registrar requisição
             st.session_state.rate_limiter.register_request()
             
-            # Tentar com diferentes modelos em caso de falha
             sucesso = False
             erro_final = None
             
@@ -278,14 +262,12 @@ with col_ia:
                 st.info(f"🔄 Tentando com modelo: {modelo}")
                 
                 try:
-                    # Limpar gráfico anterior
                     if os.path.exists("grafico.png"):
                         os.remove("grafico.png")
                         time.sleep(0.5)
                     
                     df_atual = st.session_state.dados
                     
-                    # Estatísticas básicas
                     stats = {
                         'total_recebido': float(df_atual['Total_Recebido'].sum()),
                         'total_producao': float(df_atual['Producao_Sacas'].sum()),
@@ -308,10 +290,9 @@ with col_ia:
                     4. Retorne APENAS código Python executável
                     """
                     
-                    response = client.models.generate_content(
-                        model=modelo,
-                        contents=prompt
-                    )
+                    # CORREÇÃO: Usar o modelo do SDK antigo
+                    model = genai.GenerativeModel(modelo)
+                    response = model.generate_content(prompt)
                     
                     codigo = response.text
                     codigo = re.sub(r"^```python\n|```\n?$", "", codigo, flags=re.MULTILINE).strip()
@@ -319,7 +300,6 @@ with col_ia:
                     with st.expander("🔧 Ver código gerado"):
                         st.code(codigo, language="python")
                     
-                    # Executar código
                     output_capturado = io.StringIO()
                     sys.stdout = output_capturado
                     
@@ -331,16 +311,13 @@ with col_ia:
                     
                     exec(codigo, ambiente_local)
                     
-                    # Restaurar stdout
                     sys.stdout = sys.__stdout__
                     
-                    # Exibir resultados
                     resultado_texto = output_capturado.getvalue()
                     if resultado_texto.strip():
                         st.markdown("**📝 Resultado:**")
                         st.write(resultado_texto)
                     
-                    # Exibir gráfico
                     if os.path.exists("grafico.png") and os.path.getsize("grafico.png") > 0:
                         st.markdown("**📊 Gráfico gerado:**")
                         st.image("grafico.png")
@@ -353,12 +330,11 @@ with col_ia:
                 except Exception as e:
                     erro_final = str(e)
                     st.warning(f"❌ Modelo {modelo} falhou: {str(e)[:100]}...")
-                    time.sleep(2)  # Aguardar antes de tentar próximo modelo
+                    time.sleep(2)
             
             if not sucesso:
                 st.error(f"❌ Todos os modelos falharam. Último erro: {erro_final}")
                 
-                # Sugestões
                 with st.expander("💡 Possíveis soluções"):
                     st.markdown("""
                     1. **Aguarde alguns minutos** e tente novamente
